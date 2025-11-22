@@ -29,14 +29,22 @@ class Button:
                     self.action()
 
 class Ant:
-    def __init__(self, x, y, img_left, img_right):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.img_left = img_left
-        self.img_right = img_right
+        
         self.move_left = True
         self.speed = 5
         self.holding_object = False
+        
+        ant_imgL = py.image.load('ant_imgright.png').convert_alpha()
+        ant_imgL = py.transform.scale(ant_imgL, (ant_imgL.get_width()*1.5,ant_imgL.get_height()*1.5))
+        ant_imgR = py.image.load('ant_imgleft.png').convert_alpha()
+        ant_imgR = py.transform.scale(ant_imgR, (ant_imgR.get_width()*1.5,ant_imgR.get_height()*1.5))
+
+        self.img_left = ant_imgL
+        self.img_right = ant_imgR
+
     def draw_ant(self, screen):
         if self.move_left:
             screen.blit(self.img_left, (self.x, self.y))
@@ -57,8 +65,11 @@ class Ant:
                 self.y += self.speed
             if self.y +3 > ty:
                 self.y -= self.speed
+
+
 class Nest:
     def __init__(self, x, y, img1):
+        self.font = py.font.SysFont('javanesetext', 30)
         self.x = x
         self.y = y
         self.img1 = img1
@@ -66,13 +77,35 @@ class Nest:
         self.anim_list = []
         self.nest_anim = False
         self.n_nest_anim = 0
-        for i in range(14):
-            self.anim_list.append(py.image.load(f'sprites/nest/nest_img ({i+1}).png').convert_alpha())
+        self.spawnant = 0
+        self.ants = []
+        ant1 = Ant(self.x, self.y)
+        self.ants.append(ant1)
+
+
+        self.sound_effect = py.mixer.Sound("sounds/nest_steam.mp3")
+
+        for i in range(15):
+            self.anim_list.append(py.image.load(f'sprites/nest/nest_img ({i}).png').convert_alpha())
             self.anim_list[i] = py.transform.scale(self.anim_list[i], (self.anim_list[i].get_width()*3, self.anim_list[i].get_height()*3))
 
     def draw_nest(self, screen):
+        # our main nest func
+        # It even spawns the ants!!!
+
+        
         screen.blit(self.img1, (self.x, self.y))
+        self.draw_contents(screen)
+        if self.spawnant > 9:
+            self.spawnant = 0
+            self.ants.append(Ant(x=self.x, y=self.y))
         return self.img1.get_rect(topleft=(self.x, self.y))
+    
+    def draw_contents(self, screen):
+        
+        text_im = f"Contents: {len(self.contents)}"
+        text = self.font.render(text_im, True, (0, 0, 0))
+        screen.blit(text, (self.x-5,self.y+90))
     
     def get_nest_cord(self):
         return (self.x, self.y)
@@ -80,8 +113,18 @@ class Nest:
     def animation(self, screen, i):
         if i >= 0 and i < 14:
             screen.blit(self.anim_list[i], (self.x, self.y))
+            self.draw_contents(screen)
         if i >= 14:
             screen.blit(self.anim_list[i-1], (self.x, self.y))
+            self.draw_contents(screen)
+            self.contents.pop(0)
+            
+            # STEAM SOUND EFFECT #
+            sound_effect = py.mixer.Sound('sounds/nest_steam.mp3')
+            sound_effect.set_volume(0.025)
+            sound_effect.play()
+            
+            self.spawnant += 1
 class Food:
     
     def __init__(self, x, y, foods_constructed = 0):
@@ -113,20 +156,7 @@ class Food:
             self.x = random.randint(50,1050)
             self.y = random.randint(50,500)
     
-def mbut(menu):
-    menu = not menu
 
-def spawn_ant(ants, score, ant_imgL, ant_imgR):
-    if score >= 10:
-        score -= 10
-        ants.append(
-            Ant(
-                random.randint(0, 1200),
-                random.randint(100, 600),
-                ant_imgL,
-                ant_imgR
-            )
-        )
 
 
 
@@ -144,38 +174,31 @@ def main():
     sound_effect.set_volume(0.1)
 
     nests = []
-    ants = []
     foods = []
     running = True
     player_control = False
     m = 0
-    score = 0
+    time = 0
+    time_mins = 0
+    time_hours = 0
+    nest_add_contents = False
+
     playing = True
-    nest_anim = False
-
-
-
-    ant_imgL = py.image.load('ant_imgright.png').convert_alpha()
-    ant_imgL = py.transform.scale(ant_imgL, (ant_imgL.get_width()*1.5,ant_imgL.get_height()*1.5))
-    ant_imgR = py.image.load('ant_imgleft.png').convert_alpha()
-    ant_imgR = py.transform.scale(ant_imgR, (ant_imgR.get_width()*1.5,ant_imgR.get_height()*1.5))
     
-    pie_img = py.image.load('pie_img.png').convert_alpha()
-    pie_img = py.transform.scale(pie_img, (pie_img.get_width()*3,pie_img.get_height()*3))
+
+
+
+    
+    
     
     nest_img1 = py.image.load('sprites/nest/nest_img (1).png').convert_alpha()
     nest_img1 = py.transform.scale(nest_img1, (nest_img1.get_width()*3, nest_img1.get_height()*3))
 
-    xant = random.randint(0,1300)
-    yant = random.randint(0,600)
 
     xnest = random.randint(1000,1200)
     ynest = random.randint(100, 200)
 
-    font = py.font.SysFont('Calibri', 30)
-
-    
-    menubutton2 = Button(1200, 50, 150, 25, "Spawn Ant: costs 10 score", (100, 0, 0), (150, 0, 0), spawn_ant(ants, score, ant_imgL, ant_imgR))
+    font = py.font.SysFont('javanesetext', 30)
 
     clock = py.time.Clock()
 
@@ -185,8 +208,7 @@ def main():
 
     
 
-    ant1 = Ant(xant, yant, ant_imgL, ant_imgR)
-    ants.append(ant1)
+    
     
     nest1 = Nest(xnest, ynest, nest_img1)
     nests.append(nest1)
@@ -202,82 +224,93 @@ def main():
                 food.draw_food(screen)
 
             for nest in nests:
-                if nest_anim == True:
-                    nest.nest_anim = True
+                if nest_add_contents == True:
+                    nest.contents.append("bit")
+                    nest_add_contents = False
+
+                if len(nest.contents) == 0:
+                    nest.nest_anim = False
+
+                if nest.nest_anim == False:
+                    if len(nest.contents) > 10:
+                        nest.nest_anim = True
 
                 if nest.nest_anim == False:
                     nest_rect = nest.draw_nest(screen)
                 else:
+                    
                     if nest.n_nest_anim < 15:
                         nest.animation(screen, nest.n_nest_anim) 
                         nest.n_nest_anim += 1
                     else:
                         nest_rect = nest.draw_nest(screen)
-                        nest.nest_anim = False
-                        nest_anim = False
+                        
                         nest.n_nest_anim = 0
-            menubutton2.draw(screen)
-
-
-            for ant in ants:
-                
-                ant_rect = ant.draw_ant(screen)
-                for food in foods:
-                    if ant.holding_object == False:
-                        if ant_rect.colliderect(food.food_rect):
-                            food.take_pixel()
-                            ant.holding_object = True
-
-                
-                if ant_rect.colliderect(nest_rect):
-                    if ant.holding_object == True:
-                        ant.holding_object = False
-                        nest_anim = True
-                for food in foods:
-                    if food.pixels_taken == -1:
-                        food.pixels_taken = 0
-
-                        
-                        
-                    
-                        rannum = random.randint(0, 2)
-                        if rannum == 1:
-                            sound_effect = py.mixer.Sound("snake\my_env\sounds/ding3.mp3")
-                            sound_effect.set_volume(0.1)
-                            sound_effect.play()
-                        if rannum == 0:
-                            sound_effect = py.mixer.Sound("snake\my_env\sounds/ding2.mp3")
-                            sound_effect.set_volume(0.1)
-                            sound_effect.play()
-                        if rannum == 2:
-                            sound_effect = py.mixer.Sound("snake\my_env\sounds/ding1.mp3")
-                            sound_effect.set_volume(0.1)
-                            sound_effect.play()
-                        
-                    
-
-                
-                
             
-                if player_control == False:
-                    if ant.holding_object == False:
-                        ant.move_towards(food1.x, food1.y)
-                    if ant.holding_object == True:
-                        ant.move_towards(xnest, ynest+70)
-                    if m >= 2:
-                        rannum = random.randint(0, 1)
-                        if rannum == 1:
-                            sound_effect = py.mixer.Sound("sounds/antsoundwalk1.wav")
-                            sound_effect.set_volume(0.05)
+
+
+                for ant in nest.ants:
+                    
+                    ant_rect = ant.draw_ant(screen)
+                    for food in foods:
+                        if ant.holding_object == False:
+                            if ant_rect.colliderect(food.food_rect):
+                                food.take_pixel()
+                                ant.holding_object = True
+
+                    
+                    if ant_rect.colliderect(nest_rect):
+                        if ant.holding_object == True:
+                            sound_effect = py.mixer.Sound('sounds/deposit_nest.mp3')
+                            sound_effect.set_volume(0.1)
                             sound_effect.play()
-                        if rannum == 0:
-                            sound_effect = py.mixer.Sound("sounds/antsoundwalk2.wav")
-                            sound_effect.set_volume(0.05)
-                            sound_effect.play()
+                            ant.holding_object = False
+                            nest_add_contents = True
+                    for food in foods:
+                        if food.pixels_taken == -1:
+                            food.pixels_taken = 0
+
                             
-                        m = 0
+                            
                         
-                m +=1
+                            rannum = random.randint(0, 2)
+                            if rannum == 1:
+                                sound_effect = py.mixer.Sound("sounds/ding3.mp3")
+                                sound_effect.set_volume(0.1)
+                                sound_effect.play()
+                            if rannum == 0:
+                                sound_effect = py.mixer.Sound("sounds/ding2.mp3")
+                                sound_effect.set_volume(0.1)
+                                sound_effect.play()
+                            if rannum == 2:
+                                sound_effect = py.mixer.Sound("sounds/ding1.mp3")
+                                sound_effect.set_volume(0.1)
+                                sound_effect.play()
+                            
+                        
+
+                    
+                    
+                
+                    if player_control == False:
+                        if ant.holding_object == False:
+                            ant.move_towards(food1.x, food1.y)
+                        if ant.holding_object == True:
+                            ant.move_towards(xnest, ynest+70)
+                        if m >= 2:
+                            rannum = random.randint(0, 1)
+                            if rannum == 1:
+                                sound_effect = py.mixer.Sound("sounds/antsoundwalk1.wav")
+                                sound_effect.set_volume(0.05)
+                                sound_effect.play()
+                            if rannum == 0:
+                                sound_effect = py.mixer.Sound("sounds/antsoundwalk2.wav")
+                                sound_effect.set_volume(0.05)
+                                sound_effect.play()
+                                
+                            m = 0
+                        
+                    m +=1
 
             keys = py.key.get_pressed()
 
@@ -301,23 +334,36 @@ def main():
             for event in py.event.get():
                 if event.type == py.QUIT:
                     running = False
-                if event.type == py.MOUSEBUTTONDOWN and event.button == 1: # Left mouse button    
-                        ant2 = Ant(random.randint(0,1300), 
-                        random.randint(0,600), 
-                        ant_imgL, ant_imgR)
-                        ants.append(ant2)
-
                 
 
+                
+            # do not remove
             delta_time = clock.tick(25) 
 
-            score_str = f"Score: {score}"
 
-            text = font.render(score_str, True, (0, 0, 0))
+            
+            if int(time/60) == 1:
+                time -= 60
+                time_mins +=1
+            if int(time_mins/60) == 1:
+                time_mins -= 60
+                time_hours += 1
 
-            screen.blit(text, (10, 10))
+            time_str = f"Time Elapsed: {time_hours:02}:{time_mins:02}:{time:02}"
+
+            timetext = font.render(time_str, True, (0, 0, 0))
+
+            screen.blit(timetext, (10, 10))
+
+            ant_str = f"Ants: {len(nest.ants)}"
+
+            anttext = font.render(ant_str, True, (0, 0, 0))
+
+            screen.blit(anttext, (10, 35))
 
             py.display.flip()
+
+            time += 1
 
             
         py.quit()

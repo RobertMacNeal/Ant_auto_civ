@@ -53,18 +53,20 @@ class Ant:
             screen.blit(self.img_right, (self.x, self.y))
             return self.img_right.get_rect(topleft=(self.x, self.y))
     def move_towards(self, tx, ty):
-        if self.x != tx or self.y != ty:
-            if self.x +3 < tx:
-                self.x += self.speed
-                self.move_left = True
-            if self.x +3 > tx:
-                self.x -= self.speed
-                self.move_left = False
-
-            if self.y +3 < ty:
-                self.y += self.speed
-            if self.y +3 > ty:
-                self.y -= self.speed
+        
+        # if position self.x + self.speed (collides with other ant) -> dont move
+        # if doesnt collide with other ant -> move
+            if self.x != tx or self.y != ty:
+                if self.x  < tx:
+                    self.x += self.speed
+                    self.move_left = True
+                if self.x > tx:
+                    self.x -= self.speed
+                    self.move_left = False
+                if self.y < ty:
+                    self.y += self.speed
+                if self.y > ty:
+                    self.y -= self.speed
 
 
 class Nest:
@@ -166,7 +168,7 @@ def main():
     py.mixer.pre_init(44100, -16, 2, 512)
     py.mixer.init()
 
-    screen = py.display.set_mode((1300,650))
+    screen = py.display.set_mode((1300,600))
 
 
     sound_effect = py.mixer.Sound("sounds/antsoundwalk2.wav")
@@ -296,7 +298,7 @@ def main():
                         if ant.holding_object == False:
                             ant.move_towards(food1.x, food1.y)
                         if ant.holding_object == True:
-                            ant.move_towards(xnest, ynest+70)
+                            ant.move_towards(xnest, ynest)
                         if m >= 2:
                             rannum = random.randint(0, 1)
                             if rannum == 1:
